@@ -7,11 +7,11 @@ export async function dispatchEvent(
   apiKey: string,
   debug: boolean
 ): Promise<void> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2000);
 
-    await fetch(endpoint, {
+  try {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -21,8 +21,24 @@ export async function dispatchEvent(
       signal: controller.signal,
     });
 
-    clearTimeout(timeout);
+    // 👇 NEW: response handling
+    if (!res.ok) {
+      let body: string | undefined;
+
+      try {
+        body = await res.text();
+      } catch {
+        body = undefined;
+      }
+
+      debugLog(debug, "event_rejected", {
+        status: res.status,
+        body,
+      });
+    }
   } catch (err) {
     debugLog(debug, "event_dispatch_failed", err);
+  } finally {
+    clearTimeout(timeout);
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@ak24/lens-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lens SDK for AI observability and tracking",
   "type": "module",
   "main": "./dist/index.js",
