@@ -1,8 +1,8 @@
 import { debugLog } from "./logger.js";
 import type { LensEventPayload } from "./types.js";
 
-export async function dispatchEvent(
-  payload: LensEventPayload,
+export async function dispatchBatch(
+  payloads: LensEventPayload[],
   endpoint: string,
   apiKey: string,
   debug: boolean
@@ -16,8 +16,9 @@ export async function dispatchEvent(
       headers: {
         "content-type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        "X-Lens-Batch-Size": payloads.length.toString(),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ payloads }),
       signal: controller.signal,
     });
 
@@ -31,13 +32,13 @@ export async function dispatchEvent(
         body = undefined;
       }
 
-      debugLog(debug, "event_rejected", {
+      debugLog(debug, "event_rejected", "warn", {
         status: res.status,
         body,
       });
     }
   } catch (err) {
-    debugLog(debug, "event_dispatch_failed", err);
+    debugLog(debug, "event_dispatch_failed", "warn", err);
   } finally {
     clearTimeout(timeout);
   }

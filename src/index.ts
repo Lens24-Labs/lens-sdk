@@ -1,9 +1,10 @@
 import { getConfig, setConfig } from "./config.js";
-import { dispatchEvent } from "./dispatcher.js";
+
 import { debugLog } from "./logger.js";
 import type { LensEventPayload } from "./types.js";
 import { validateEvent } from "./validator.js";
 import { generateRequestId } from "./utils/id.js";
+import { dispatchBatch } from "./dispatcher.js";
 
 export type LensInitOptions = {
   apiKey: string;
@@ -37,7 +38,26 @@ export function init(options: LensInitOptions): void {
     sdk_version: "0.1.0",
     runtime: "node",
   });
+
+  const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
+  signals.forEach((signal) => {
+    process.on(signal, async () => {
+      debugLog(
+        options?.debug ?? false,
+        `Received ${signal}, flushing final logs...`,
+        "info"
+      );
+      await flush();
+      process.exit(0);
+    });
+  });
 }
+
+let eventQueue: LensEventPayload[] = [];
+let flushInterval: ReturnType<typeof setInterval> | null = null;
+
+const BATCH_SIZE = 50;
+const FLUSH_TIME = 5000;
 
 export function track(event: LensEvent): void {
   const config = getConfig();
@@ -46,7 +66,7 @@ export function track(event: LensEvent): void {
   const validation = validateEvent(event);
 
   if (!validation.valid) {
-    debugLog(config.debug, "Event dropped:", validation.reason, event);
+    debugLog(config.debug, "Event dropped:", "warn", validation.reason, event);
     return;
   }
 
@@ -69,5 +89,31 @@ export function track(event: LensEvent): void {
     sent_at: new Date().toISOString(),
   };
 
-  void dispatchEvent(payload, config.endpoint, config.apiKey, config.debug);
+  eventQueue.push(payload);
+
+  if (!flushInterval) {
+    flushInterval = setInterval(flush, FLUSH_TIME);
+  }
+
+  if (eventQueue.length >= BATCH_SIZE) {
+    void flush();
+  }
+}
+
+async function flush() {
+  if (eventQueue.length === 0) return;
+
+  const config = getConfig();
+  if (!config) return;
+
+  const batch = [...eventQueue];
+  eventQueue = [];
+
+  if (flushInterval) {
+    clearInterval(flushInterval);
+    flushInterval = null;
+  }
+
+  // Send the whole batch in one HTTP request
+  await dispatchBatch(batch, config.endpoint, config.apiKey, config.debug);
 }

@@ -1,18 +1,23 @@
 {
-  "name": "@ak24/lens-sdk",
-  "version": "0.1.1",
-  "description": "Lens SDK for AI observability and tracking",
+  "name": "@lens24-labs/sdk",
+  "version": "0.1.0",
+  "description": "High-performance LLM observability with automated event batching",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lens24-Labs/lens-sdk.git"
+  },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@types/node": "^25.0.9",
     "typescript": "^5.3.3"
   }
 }
